@@ -1,0 +1,4 @@
+.account-bar{display:flex;flex-wrap:wrap;gap:12px;align-items:center;padding:10px 25px;border-bottom:1px solid var(--line);background:var(--pale);font-size:12px}.account-bar button{font-size:12px;padding:6px 10px}#access-form label{display:block;margin:15px 0}#access-form input{display:block;width:100%;margin-top:6px;padding:10px;border:1px solid var(--line);border-radius:6px}#access-form [hidden]{display:none}#access-message{color:var(--red)}#admin-dialog{width:min(900px,95vw);max-height:90vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:25px;color:var(--ink)}#admin-dialog::backdrop{background:#0008}#cloud-status{margin-right:auto}
+
+.shell:has(#access-form){grid-template-columns:minmax(0,1fr)}
+.shell:has(#access-form) main{max-width:900px;width:100%;margin:auto}
