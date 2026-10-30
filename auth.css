@@ -2,3 +2,10 @@
 
 .shell:has(#access-form){grid-template-columns:minmax(0,1fr)}
 .shell:has(#access-form) main{max-width:900px;width:100%;margin:auto}
+
+#admin-message:not(:empty){padding:12px;border:1px solid var(--line);background:var(--pale);color:var(--ink)}
+#admin-message[data-kind="error"]{color:var(--red)}
+#admin-dialog button:disabled{opacity:.65;cursor:default}
+
+.shell:has(#approval-status){grid-template-columns:minmax(0,1fr)}
+.shell:has(#approval-status) main{max-width:900px;width:100%;margin:auto}

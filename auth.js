@@ -28,27 +28,52 @@ window.QuadernAuth=(()=>{
   let signup=false;const form=document.querySelector('#access-form');
   function tab(value){signup=value;document.querySelector('#email-field').hidden=!value;form.elements.email.required=value;form.elements.password.autocomplete=value?'new-password':'current-password';form.elements.password.minLength=value?12:1;form.querySelector('button[type=submit]').textContent=value?'Sol·licita accés':'Entrar';}
   document.querySelector('#signup-tab').onclick=()=>tab(true);document.querySelector('#login-tab').onclick=()=>tab(false);
-  form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button[type=submit]');button.disabled=true;const msg=document.querySelector('#access-message');try{const d=await call(signup?'signup':'login',{username:form.elements.username.value,email:form.elements.email.value,password:form.elements.password.value});form.elements.password.value='';if(signup){msg.textContent=d.message;}else{store(d.session);location.reload();}}catch(e){msg.textContent=e.message;}finally{button.disabled=false;}};
+  form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button[type=submit]');button.disabled=true;const msg=document.querySelector('#access-message');try{const d=await call(signup?'signup':'login',{username:form.elements.username.value,email:form.elements.email.value,password:form.elements.password.value});form.elements.password.value='';if(signup){tab(false);msg.textContent='Compte creat. Entra amb el teu usuari i contrasenya; si encara falta l’aprovació de Mrs, la pantalla d’espera comprovarà el canvi automàticament.';}else{store(d.session);location.reload();}}catch(e){msg.textContent=e.message;}finally{button.disabled=false;}};
  }
  function controls(){
   const bar=document.createElement('div');bar.className='account-bar';bar.innerHTML=`<span>${esc(profile.username)}</span><span id="cloud-status" role="status">Progrés sincronitzat</span><button id="reset-tests">Reinicia tots els tests</button>${profile.role==='admin'?'<button id="admin-panel">Administració</button>':''}<button id="logout">Tanca la sessió</button>`;document.querySelector('.top').after(bar);
   document.querySelector('.local-note').textContent='El teu progrés es desa al teu compte';
   document.querySelector('#logout').onclick=async()=>{try{await fetch(cfg.url+'/auth/v1/logout',{method:'POST',headers:{apikey:cfg.key,Authorization:'Bearer '+session.access_token}});}finally{store(null);location.reload();}};
   document.querySelector('#reset-tests').onclick=async()=>{if(!confirm('Vols esborrar tots els intents i tests en curs? Les marques d’estudi es conservaran.'))return;try{await call('progress.reset',{confirm:true});location.reload();}catch(e){alert(e.message);}};
-  if(profile.role==='admin')document.querySelector('#admin-panel').onclick=admin;
+  if(profile.role==='admin')document.querySelector('#admin-panel').onclick=()=>admin();
  }
- async function admin(){
+ const statusLabel={pending:'Pendent d’aprovació',approved:'Accés aprovat',disabled:'Desactivat',rejected:'Rebutjat'};
+ async function admin(feedback='',expected=null){
   let modal=document.querySelector('#admin-dialog');if(!modal){modal=document.createElement('dialog');modal.id='admin-dialog';document.body.append(modal);}
-  modal.innerHTML='<p>Carregant usuaris…</p>';modal.showModal();
-  try{const d=await call('admin.users');modal.innerHTML=`<div class="section-head"><h2>Administració · Mrs</h2><button id="close-admin">Tanca</button></div><p>Desbloquejar elimina la vinculació: el següent accés aprovat registrarà de nou la IP i el navegador.</p><p id="admin-message" role="status"></p>${d.users.map(u=>`<section class="test-card" style="margin:12px 0"><h3>${esc(u.username)} · ${esc(u.status)}</h3><p>${esc(u.email)}<br>Últim accés: ${esc(u.last_seen||'—')} · IP: ${esc(u.last_ip||'—')}</p>${u.role!=='admin'?`<div class="button-row"><button data-action="status" data-id="${esc(u.id)}" data-status="approved">Aprova</button><button data-action="status" data-id="${esc(u.id)}" data-status="rejected">Rebutja</button><button data-action="status" data-id="${esc(u.id)}" data-status="disabled">Desactiva</button><button data-action="unbind" data-id="${esc(u.id)}">Desbloqueja IP/navegador</button><button data-action="reset" data-id="${esc(u.id)}">Reinicia el progrés</button></div>`:''}</section>`).join('')}<button id="load-access-log">Mostra els darrers accessos</button><pre id="access-log" style="white-space:pre-wrap"></pre>`;
+  const scroll=modal.scrollTop;modal.innerHTML='<p role="status">Carregant usuaris…</p>';if(!modal.open)modal.showModal();
+  try{const d=await call('admin.users');
+   if(expected&&!d.users.some(u=>u.id===expected.id&&u.status===expected.status))throw Error('El servidor no ha confirmat el canvi d’estat. Torna a provar-ho.');
+   modal.innerHTML=`<div class="section-head"><h2>Administració · Mrs</h2><button id="close-admin">Tanca</button></div><p>Els comptes amb «Accés aprovat» ja poden entrar amb el seu usuari i contrasenya. Desbloquejar elimina la vinculació: el següent accés aprovat registrarà de nou la IP i el navegador.</p><p id="admin-message" role="status" tabindex="-1">${esc(feedback)}</p>${d.users.map(u=>`<section class="test-card" style="margin:12px 0"><h3>${esc(u.username)} · ${esc(statusLabel[u.status]||u.status)}</h3><p>${esc(u.email)}<br>${u.last_seen?'Últim accés: '+esc(new Date(u.last_seen).toLocaleString('ca-ES'))+' · IP: '+esc(u.last_ip||'—'):'Encara no ha iniciat sessió amb accés aprovat.'}</p>${u.role!=='admin'?`<div class="button-row"><button data-action="status" data-id="${esc(u.id)}" data-status="approved" ${u.status==='approved'?'disabled':''}>${u.status==='approved'?'✓ Accés aprovat':'Aprova'}</button><button data-action="status" data-id="${esc(u.id)}" data-status="rejected" ${u.status==='rejected'?'disabled':''}>Rebutja</button><button data-action="status" data-id="${esc(u.id)}" data-status="disabled" ${u.status==='disabled'?'disabled':''}>Desactiva</button><button data-action="unbind" data-id="${esc(u.id)}">Desbloqueja IP/navegador</button><button data-action="reset" data-id="${esc(u.id)}">Reinicia el progrés</button></div>`:''}</section>`).join('')}<button id="load-access-log">Mostra els darrers accessos</button><pre id="access-log" style="white-space:pre-wrap"></pre>`;
+   modal.scrollTop=scroll;if(feedback)modal.querySelector('#admin-message').focus();
    modal.querySelector('#close-admin').onclick=()=>modal.close();
-   modal.querySelectorAll('[data-action]').forEach(b=>b.onclick=async()=>{if(!confirm('Confirma aquesta acció sobre el compte seleccionat.'))return;b.disabled=true;try{await call('admin.'+b.dataset.action,{user_id:b.dataset.id,status:b.dataset.status});modal.close();await admin();}catch(e){modal.querySelector('#admin-message').textContent=e.message;b.disabled=false;}});
+   modal.querySelectorAll('[data-action]').forEach(b=>b.onclick=async()=>{
+    const user=d.users.find(u=>u.id===b.dataset.id);if(!user)return;
+    const messages={approved:'Accés aprovat per a '+user.username+'. Ja pot entrar amb el seu usuari i contrasenya.',rejected:'Sol·licitud de '+user.username+' rebutjada.',disabled:'Compte de '+user.username+' desactivat.'};
+    const question=b.dataset.action==='status'?(b.dataset.status==='approved'?'Vols aprovar l’accés de '+user.username+'?':b.dataset.status==='rejected'?'Vols rebutjar la sol·licitud de '+user.username+'?':'Vols desactivar el compte de '+user.username+'?'):b.dataset.action==='unbind'?'Vols desbloquejar la IP i el navegador de '+user.username+'?':'Vols reiniciar tot el progrés de '+user.username+'?';
+    if(!confirm(question))return;
+    const buttons=modal.querySelectorAll('[data-action]');buttons.forEach(x=>x.disabled=true);
+    const msg=modal.querySelector('#admin-message');msg.textContent='Desant el canvi…';msg.dataset.kind='';
+    try{await call('admin.'+b.dataset.action,{user_id:user.id,status:b.dataset.status});
+     const feedback=b.dataset.action==='status'?messages[b.dataset.status]:b.dataset.action==='unbind'?'Vinculació de '+user.username+' desbloquejada.':'Progrés de '+user.username+' reiniciat.';
+     await admin(feedback,b.dataset.action==='status'?{id:user.id,status:b.dataset.status}:null);
+    }catch(e){msg.textContent=e.message;msg.dataset.kind='error';buttons.forEach(x=>x.disabled=x.dataset.action==='status'&&d.users.find(u=>u.id===x.dataset.id)?.status===x.dataset.status);}
+   });
    modal.querySelector('#load-access-log').onclick=async()=>{try{const r=await call('admin.logs');modal.querySelector('#access-log').textContent=r.logs.map(l=>`${l.created_at} · ${d.users.find(u=>u.id===l.user_id)?.username||'—'} · ${l.event} · ${l.ip||'—'}`).join('\n');}catch(e){modal.querySelector('#admin-message').textContent=e.message;}};
   }catch(e){modal.textContent=e.message;const close=document.createElement('button');close.textContent='Tanca';close.onclick=()=>modal.close();modal.append(close);}
  }
+ function pendingAccess(){
+  document.querySelector('#sidebar').hidden=true;document.querySelector('.local-note').textContent='Accés amb aprovació de Mrs';
+  document.querySelector('#main').innerHTML=`<p class="eyebrow">Accés restringit</p><h1>El teu compte: ${esc(profile.username)}</h1><p id="approval-status" role="status"></p><p>Quan Mrs aprovi la sol·licitud, aquesta pantalla obrirà el temari automàticament. També pots comprovar-ho amb el botó.</p><div class="button-row"><button id="check-approval">Comprova l’aprovació i entra</button><button id="pending-logout">Tanca la sessió</button></div>`;
+  const status=document.querySelector('#approval-status'),button=document.querySelector('#check-approval');let timer,busy=false;
+  const show=()=>{status.textContent=profile.status==='pending'?'La sol·licitud està pendent d’aprovació de Mrs.':profile.status==='disabled'?'El compte està desactivat. Contacta amb Mrs.':'La sol·licitud ha estat rebutjada per Mrs.';};show();
+  const check=async()=>{if(busy)return;clearTimeout(timer);busy=true;button.disabled=true;status.textContent='Comprovant l’aprovació…';try{const d=await call('me');profile=d.user;if(profile.status==='approved'){status.textContent='Accés aprovat. Obrint el temari…';location.reload();return;}show();}catch(e){status.textContent=e.message;}finally{busy=false;button.disabled=false;if(profile.status==='pending')timer=setTimeout(()=>{if(document.hidden){timer=setTimeout(check,10000);}else check();},10000);}};
+  button.onclick=check;
+  document.querySelector('#pending-logout').onclick=()=>{clearTimeout(timer);store(null);location.reload();};
+  if(profile.status==='pending')timer=setTimeout(check,10000);
+ }
  const ready=(async()=>{
   if(!session){shell();return false;}
-  try{const d=await call('me');profile=d.user;if(profile.status!=='approved'){shell(({pending:'La sol·licitud està pendent d’aprovació de Mrs.',disabled:'El compte està desactivat. Contacta amb Mrs.',rejected:'La sol·licitud ha estat rebutjada per Mrs.'})[profile.status]||'El compte no té accés aprovat.');return false;}controls();return true;}
+  try{const d=await call('me');profile=d.user;if(profile.status!=='approved'){pendingAccess();return false;}controls();return true;}
   catch(e){shell(e.message);return false;}
  })();
  return {ready,call,profile:()=>profile};
