@@ -9,3 +9,5 @@
 
 .shell:has(#approval-status){grid-template-columns:minmax(0,1fr)}
 .shell:has(#approval-status) main{max-width:900px;width:100%;margin:auto}
+
+#admin-dialog .delete-user{color:var(--red);border-color:var(--red)}
