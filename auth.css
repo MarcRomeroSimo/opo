@@ -11,3 +11,13 @@
 .shell:has(#approval-status) main{max-width:900px;width:100%;margin:auto}
 
 #admin-dialog .delete-user{color:var(--red);border-color:var(--red)}
+
+#sidebar[hidden],#export-progress[hidden],.import-label[hidden]{display:none!important}
+.preview-proof{padding:26px;border:1px solid var(--line);border-radius:10px;background:var(--pale);margin:30px 0}
+.preview-proof h2{font-size:29px}.preview-proof p{font-size:14px}
+.preview-badges{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 16px}
+.preview-badges span,.preview-badges a{border:1px solid var(--line);border-radius:20px;padding:5px 10px;font-size:11px;background:var(--paper)}
+.preview-card-actions{border-top:1px solid var(--line);padding-top:14px;margin-bottom:0;gap:15px;font-size:12px}
+.preview-card-actions a:first-child{margin-right:auto}.preview-group{margin-top:38px}
+#preview-actions span{margin-right:auto}#preview-actions a{padding:6px 12px;border:1px solid var(--line);border-radius:6px;text-decoration:none;font-size:12px;font-weight:600}
+@media(max-width:720px){.preview-proof{padding:20px}.preview-proof h2{font-size:25px}#preview-actions{padding:12px 18px}#preview-actions span{flex-basis:100%}}

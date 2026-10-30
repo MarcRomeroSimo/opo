@@ -22,13 +22,14 @@ window.QuadernAuth=(()=>{
   const r=await fetch(cfg.url+'/functions/v1/quadern',{method:'POST',cache:'no-store',headers:{apikey:cfg.key,'Content-Type':'application/json','x-device-key':device,...(!publicAction&&session?{Authorization:'Bearer '+session.access_token}:{})},body:JSON.stringify({action,...payload})});
   const d=await r.json();if(r.status===401&&!publicAction&&retry&&session?.refresh_token){await refresh();return call(action,payload,false);}if(!r.ok)throw Object.assign(Error(d.error||'No s’ha pogut completar l’operació.'),{status:r.status});return d;
  }
- function shell(message=''){
+ function shell(message='',mode='login'){
   document.querySelector('#sidebar').hidden=true;document.querySelector('.local-note').textContent='Accés amb aprovació de Mrs';
   document.querySelector('#main').innerHTML=`<p class="eyebrow">Accés restringit</p><h1>El teu espai d’estudi.</h1><p>Entra amb el compte aprovat per Mrs.</p><div class="notice">Cada compte queda vinculat a una IP i un navegador. Si canvies de xarxa o esborres les dades del navegador, Mrs haurà de desbloquejar-lo. Registrem la IP i l’activitat d’accés per gestionar aquesta restricció.</div><div class="button-row"><button id="login-tab">Entrar</button><button id="signup-tab">Sol·licitar accés</button></div><form id="access-form" class="test-card" style="max-width:500px"><label>Usuari<input name="username" autocomplete="username" required pattern="[A-Za-z0-9_]{3,32}" maxlength="32"></label><label>Contrasenya<input name="password" type="password" autocomplete="current-password" required maxlength="128"></label><p id="access-message" role="status">${esc(message)}</p><button class="primary" type="submit">Entrar</button></form>`;
   let signup=false;const form=document.querySelector('#access-form');
   function tab(value){signup=value;form.elements.password.autocomplete=value?'new-password':'current-password';form.elements.password.minLength=value?12:1;form.querySelector('button[type=submit]').textContent=value?'Sol·licita accés':'Entrar';}
   document.querySelector('#signup-tab').onclick=()=>tab(true);document.querySelector('#login-tab').onclick=()=>tab(false);
-  form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button[type=submit]');button.disabled=true;const msg=document.querySelector('#access-message');try{const d=await call(signup?'signup':'login',{username:form.elements.username.value,password:form.elements.password.value});form.elements.password.value='';if(signup){tab(false);msg.textContent='Compte creat. Entra amb el teu usuari i contrasenya; si encara falta l’aprovació de Mrs, la pantalla d’espera comprovarà el canvi automàticament.';}else{store(d.session);location.reload();}}catch(e){msg.textContent=e.message;}finally{button.disabled=false;}};
+  form.onsubmit=async e=>{e.preventDefault();const button=form.querySelector('button[type=submit]');button.disabled=true;const msg=document.querySelector('#access-message');try{const d=await call(signup?'signup':'login',{username:form.elements.username.value,password:form.elements.password.value});form.elements.password.value='';if(signup){tab(false);msg.textContent='Compte creat. Entra amb el teu usuari i contrasenya; si encara falta l’aprovació de Mrs, la pantalla d’espera comprovarà el canvi automàticament.';}else{store(d.session);if(['#entrar','#registre'].includes(location.hash))history.replaceState({},'',location.pathname+location.search);location.reload();}}catch(e){msg.textContent=e.message;}finally{button.disabled=false;}};
+  if(mode==='signup')tab(true);
  }
  function controls(){
   const bar=document.createElement('div');bar.className='account-bar';bar.innerHTML=`<span>${esc(profile.username)}</span><span id="cloud-status" role="status">Progrés sincronitzat</span><button id="reset-tests">Reinicia tots els tests</button>${profile.role==='admin'?'<button id="admin-panel">Administració</button>':''}<button id="logout">Tanca la sessió</button>`;document.querySelector('.top').after(bar);
@@ -72,9 +73,9 @@ window.QuadernAuth=(()=>{
   if(profile.status==='pending')timer=setTimeout(check,10000);
  }
  const ready=(async()=>{
-  if(!session){shell();return false;}
+  if(!session){if(!window.QuadernPreview)shell();return false;}
   try{const d=await call('me');profile=d.user;if(profile.status!=='approved'){pendingAccess();return false;}controls();return true;}
   catch(e){shell(e.message);return false;}
  })();
- return {ready,call,profile:()=>profile};
+ return {ready,call,profile:()=>profile,open:(message='',mode='login')=>shell(message,mode)};
 })();
